@@ -1,0 +1,13 @@
+LICENSE
+README.md
+pyproject.toml
+src/brawling/__init__.py
+src/brawling/client.py
+src/brawling/exceptions.py
+src/brawling.egg-info/PKG-INFO
+src/brawling.egg-info/SOURCES.txt
+src/brawling.egg-info/dependency_links.txt
+src/brawling.egg-info/top_level.txt
+src/brawling/models/__init__.py
+src/brawling/models/base.py
+src/brawling/models/players.py
