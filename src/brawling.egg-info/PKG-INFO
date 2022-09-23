@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: brawling
-Version: 0.0.3
+Version: 0.0.4
 Summary: Brawl stars API wrapper (synchronous)
 Author-email: dankmeme01 <kirill.babikov28@gmail.com>
 License: MIT License

@@ -7,6 +7,7 @@ import re
 
 from .models import *
 from .exceptions import *
+from .util import *
 
 __all__ = [
     "Client",
@@ -103,13 +104,15 @@ class Client:
 
         return match.group().upper()
 
-    def _exc_wrapper(self, exc: Exception):
+    def _exc_wrapper(self, exc: Exception) -> ErrorResponse:
         if self._strict:
             raise exc
         else:
             return ErrorResponse(exc)
 
-    def get_battle_log(self, tag: str):
+    # public methods
+
+    def get_battle_log(self, tag: str) -> list[Battle]:
         tag = self._verify_tag(tag)
         if isinstance(tag, Exception):
             return self._exc_wrapper(tag)
@@ -120,4 +123,20 @@ class Client:
 
         battle_list = res["items"]
 
-        return [Battle.from_json(x) for x in battle_list]
+        battles = []
+
+        for b in battle_list:
+            battles.append(SoloBattle.from_json(b) if "players" in b else TeamBattle.from_json(b))
+
+        return battles
+
+    def get_player(self, tag: str) -> Player:
+        tag = self._verify_tag(tag)
+        if isinstance(tag, Exception):
+            return self._exc_wrapper(tag)
+
+        res = self._get(f"/players/{tag}")
+        if isinstance(res, ErrorResponse):
+            return res
+
+        return Player.from_json(res)
