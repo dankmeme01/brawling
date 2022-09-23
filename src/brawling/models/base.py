@@ -11,5 +11,5 @@ class BaseModel:
         raise NotImplementedError()
 
     @staticmethod
-    def _from_props(cls, obj: dict, *fields):
-        return cls(*[obj.get(f, None) for f in fields])
+    def _from_props(cls, obj: dict, fieldstr):
+        return cls(*[obj.get(f, None) for f in fieldstr.split(" ")])

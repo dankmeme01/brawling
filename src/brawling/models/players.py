@@ -28,7 +28,7 @@ class BattleEvent(BaseModel):
 
     @classmethod
     def from_json(cls, obj):
-        return cls._from_props(cls, obj, "id", "mode", "map")
+        return cls._from_props(cls, obj, "id mode map")
 
 @dataclass
 class BattleBrawler(BaseModel):
@@ -40,7 +40,7 @@ class BattleBrawler(BaseModel):
 
     @classmethod
     def from_json(cls, obj):
-        return cls._from_props(cls, obj, "id", "name", "power", "trophies")
+        return cls._from_props(cls, obj, "id name power trophies")
 
 @dataclass
 class BattlePlayer(BaseModel):
@@ -52,6 +52,10 @@ class BattlePlayer(BaseModel):
     @classmethod
     def from_json(cls, obj):
         return cls(obj["tag"], obj["name"], BattleBrawler.from_json(obj["brawler"]))
+
+    def fetch_player(self, client):
+        """Utility method to fetch this player's account data"""
+        return client.get_player(self.tag)
 
 @dataclass
 class BattleTeam(BaseModel):
@@ -131,7 +135,7 @@ class PlayerClub(BaseModel):
 
     @classmethod
     def from_json(cls, obj):
-        return cls._from_props(cls, obj, "tag", "name")
+        return cls._from_props(cls, obj, "tag name")
 
 @dataclass
 class PlayerBrawler(BaseModel):
@@ -197,6 +201,10 @@ class Player(BaseModel):
             obj["duoVictories"],
             obj["bestRoboRumbleTime"],
             obj["bestTimeAsBigBrawler"],
-            PlayerClub.from_json(obj["club"]),
+            PlayerClub.from_json(obj["club"]) if "club" in obj else None,
             [PlayerBrawler.from_json(x) for x in obj["brawlers"]]
         )
+
+    def fetch_club(self, client):
+        """Utility method to fetch this player's club"""
+        return client.get_club(self.club.tag)

@@ -1,22 +1,17 @@
-[build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
-
-[project]
+[tool.poetry]
 name = "brawling"
-version = "0.0.4"
-authors = [
-  { name="dankmeme01", email="kirill.babikov28@gmail.com" },
-]
+version = "0.3.1"
 description = "Brawl stars API wrapper (synchronous)"
+authors = ["dankmeme01 <kirill.babikov28@gmail.com>"]
+license = "MIT"
 readme = "README.md"
-license = { file="LICENSE" }
-requires-python = ">=3.7"
-classifiers = [
-    "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
-]
 
-[project.urls]
-"Homepage" = "https://github.com/dankmeme01/brawling"
+[tool.poetry.dependencies]
+python = "^3.7"
+python-dateutil = "^2.8.2"
+
+requests-cache = { version = "^0.9.6", optional = true }
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
