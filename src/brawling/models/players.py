@@ -90,7 +90,7 @@ class Battle(BaseModel):
             battle["result"] if "result" in battle else battle["rank"],
             battle.get("duration", None),
             battle.get("trophyChange", None),
-            BattlePlayer.from_json(battle["starPlayer"]) if 'starPlayer' in battle else None,
+            BattlePlayer.from_json(battle["starPlayer"]) if (battle.get('starPlayer', None) is not None) else None,
         )
 
 @dataclass

@@ -3,6 +3,8 @@ from urllib.parse import quote_plus
 from dataclasses import dataclass
 from pathlib import Path
 from difflib import SequenceMatcher
+from requests import Session
+
 import logging
 import re
 
@@ -11,7 +13,6 @@ try:
     from datetime import timedelta
     CACHE_ENABLED = True
 except ModuleNotFoundError:
-    from requests import Session
     CACHE_ENABLED = False
 
 
