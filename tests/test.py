@@ -6,7 +6,7 @@ import brawling
 
 TAG = "#UC8L2YC0"
 CLUB_TAG = "#2GLLYGG2G"
-TEST_BRAWLER_ID = 16000000
+TEST_BRAWLER_ID = brawling.BrawlerID.SHELLY
 PAGE_ITEMS = 42
 
 # unittest seems to reinitialize the Tests class each test, so bring this out
@@ -49,7 +49,7 @@ class Tests(unittest.TestCase):
     def test_brawler(self):
         brawler = self.client.get_brawler(TEST_BRAWLER_ID)
         self.assertNotIsInstance(brawler, brawling.ErrorResponse, str(brawler))
-        self.assertEqual(brawler.id, TEST_BRAWLER_ID, "Invalid brawler id")
+        self.assertEqual(brawler.id, TEST_BRAWLER_ID.value, "Invalid brawler id")
 
     def test_bad_brawler(self):
         brawler = self.client.get_brawler(0xdeadbeef)

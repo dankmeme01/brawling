@@ -1,11 +1,14 @@
-from typing import Any, Iterator, Optional, Union
+from typing import Iterator, Optional, Union
 from urllib.parse import quote_plus
 from dataclasses import dataclass
+from pathlib import Path
+from difflib import SequenceMatcher
 import logging
 import re
 
 try:
     from requests_cache import CachedSession
+    from datetime import timedelta
     CACHE_ENABLED = True
 except ModuleNotFoundError:
     from requests import Session
@@ -36,7 +39,7 @@ class Client:
 
     To paginate over data, use methods starting with page_*. They return iterators that yield response models.
     """
-    def __init__(self, token: str, *, proxy: bool = False, strict_errors: bool = True):
+    def __init__(self, token: Union[str, Path], *, proxy: bool = False, strict_errors: bool = True, force_no_cache: bool = False):
         """Initialize the main client
 
         Args:
@@ -50,14 +53,29 @@ class Client:
         self.__ch.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s: %(message)s"))
         self.__logger.addHandler(self.__ch)
         self._debug(False)
-        self._headers = {"Authorization": f"Bearer {token}"}
+        self._headers = {"Authorization": f"Bearer {self._parse_token(token)}"}
         self._base = PROXY_URL if proxy else BASE_URL
         self._strict = strict_errors
+        self._caching = CACHE_ENABLED and not force_no_cache
 
-        if CACHE_ENABLED:
-            self.session = CachedSession(cache_name=".bsapi_cache", use_temp=True)
+        if self._caching:
+            self.session = CachedSession(cache_name=".bsapi_cache", use_temp=True, expire_after=timedelta(hours=1), cache_control=True)
         else:
             self.session = Session()
+
+    def _parse_token(self, token: Union[str, Path]) -> str:
+        if isinstance(token, Path):
+            return token.read_text().strip()
+        else:
+            if token.startswith('eyJ0'):
+                return token.strip()
+
+            ppath = Path(token)
+            if ppath.exists():
+                return ppath.read_text().strip()
+            else:
+                # Supposedly dead code, unless they switch from JWT
+                return token
 
     def _debug(self, debug: bool):
         """Toggle debug mode
@@ -129,10 +147,41 @@ class Client:
     def _unwrap_list(self, json_list, cls: BaseModel):
         return [cls.from_json(x) for x in json_list]
 
+    def _brawler_id(self, bid: Union[Union[int, str], BrawlerID]):
+        if isinstance(bid, BrawlerID):
+            return str(bid.value)
+
+        val = str(bid).upper()
+        if val.isdigit():
+            return val
+
+        # we got a name
+        all_brawlers = self.get_brawlers()
+        table = {b.name.upper(): str(b.id) for b in all_brawlers}
+
+        if val in table:
+            return table[val]
+
+        # not found
+
+        closest = (0, None)
+        for name in table.keys():
+            match = SequenceMatcher(lambda x: x in " \t-.", name, val).ratio()
+            if match > closest[0]:
+                closest = (match, name)
+
+        if closest[0] == 1:
+            return table[closest[1]]
+
+        raise KeyError(f"Could not find the brawler. Closest match: {closest[1]} with {(closest[0]*100):.1f}% confidence")
+
     # python dunder methods
 
     def __del__(self):
         self.session.close()
+
+    def __repr__(self) -> str:
+        return f"<Client(proxy={self._base == PROXY_URL}, strict_errors={self._strict}, cache_enabled={self._caching})>"
 
     # --- public API methods --- #
 
@@ -209,11 +258,11 @@ class Client:
 
         return self._unwrap_list(res["items"], ClubRanking)
 
-    def get_brawler_rankings(self, brawler_id: int, region: Optional[str] = None) -> list[BrawlerRanking]:
+    def get_brawler_rankings(self, brawler_id: Union[Union[int, str], BrawlerID], region: Optional[str] = None) -> list[BrawlerRanking]:
         if region is None:
             region = 'global'
 
-        res = self._get(f"/rankings/{region}/brawlers/{brawler_id}")
+        res = self._get(f"/rankings/{region}/brawlers/{self._brawler_id(brawler_id)}")
         if isinstance(res, ErrorResponse):
             return res
 
@@ -239,9 +288,13 @@ class Client:
 
         return self._unwrap_list(res["items"], Brawler)
 
-    def get_brawler(self, id: Union[int, str]) -> Brawler:
-        """Get a single brawler by their ID."""
-        res = self._get(f"/brawlers/{id}")
+    def get_brawler(self, id: Union[Union[int, str], BrawlerID]) -> Brawler:
+        """Get a single brawler by their ID or an enumeration value.
+
+        If for some reason the enum `BrawlerID` is not up to date, you can specify the literal brawler name instead.
+        It will fetch all the brawlers and use the ID of the brawler you specified
+        """
+        res = self._get(f"/brawlers/{self._brawler_id(id)}")
         if isinstance(res, ErrorResponse):
             return res
 
@@ -262,12 +315,14 @@ class Client:
     def page_club_members(
             self, tag: str, per_page: int, *, max: int = 0
     ) -> Iterator[list[ClubMember]]:
+        """Return a paginator over members of a club"""
 
         return RequestPaginator(self, f"/clubs/{tag}/members", per_page, max, ClubMember)
 
     def page_club_rankings(
             self, per_page: int, region: Optional[str] = None, *, max: int = 0
     ) -> Iterator[list[ClubRanking]]:
+        """Return a paginator over club rankings in a region (or worldwide if no region specified)"""
 
         if region is None:
             region = "global"
@@ -275,16 +330,19 @@ class Client:
         return RequestPaginator(self, f"/rankings/{region}/clubs", per_page, max, ClubRanking)
 
     def page_brawler_rankings(
-        self, brawler_id: Union[int, str], per_page: int, region: Optional[str] = None, *, max: int = 0
+        self, brawler_id: Union[Union[int, str], BrawlerID], per_page: int, region: Optional[str] = None, *, max: int = 0
     ) -> Iterator[list[BrawlerRanking]]:
+        """Return a paginator over brawler rankings in a region (or worldwide if no region specified)
+        NOTE: look at `Client.get_brawler` documentation for more information about `brawler_id`"""
         if region is None:
             region = "global"
 
-        return RequestPaginator(self, f"/rankings/{region}/brawlers/{brawler_id}", per_page, max, BrawlerRanking)
+        return RequestPaginator(self, f"/rankings/{region}/brawlers/{self._brawler_id(brawler_id)}", per_page, max, BrawlerRanking)
 
     def page_player_rankings(
         self, per_page: int, region: Optional[str] = None, *, max: int = 0
     ) -> Iterator[list[PlayerRanking]]:
+        """Return a paginator over player rankings in a region (or worldwide if no region specified)"""
         if region is None:
             region = "global"
 
@@ -293,4 +351,5 @@ class Client:
     def page_brawlers(
         self, per_page: int, *, max: int = 0
     ) -> Iterator[list[Brawler]]:
+        """Return a paginator over all the brawlers present in game at current time"""
         return RequestPaginator(self, f"/brawlers", per_page, max, Brawler)
