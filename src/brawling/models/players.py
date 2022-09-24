@@ -1,5 +1,6 @@
 from dataclasses import dataclass, asdict
 from datetime import datetime
+from typing import Optional
 import dateutil.parser
 
 from .base import BaseModel
@@ -74,8 +75,8 @@ class Battle(BaseModel):
     mode: str
     type: str
     result: str
-    duration: int
-    trophy_change: int
+    duration: Optional[int]
+    trophy_change: Optional[int]
     star_player: BattlePlayer
 
     @classmethod
@@ -85,7 +86,7 @@ class Battle(BaseModel):
             dateutil.parser.isoparse(obj["battleTime"]),
             BattleEvent.from_json(obj["event"]),
             battle["mode"],
-            battle["type"],
+            battle.get("type"),
             battle["result"] if "result" in battle else battle["rank"],
             battle.get("duration", None),
             battle.get("trophyChange", None),

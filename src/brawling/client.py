@@ -153,7 +153,7 @@ class Client:
         battles = []
 
         for b in battle_list:
-            battles.append(SoloBattle.from_json(b) if "players" in b else TeamBattle.from_json(b))
+            battles.append(SoloBattle.from_json(b) if "players" in b["battle"] else TeamBattle.from_json(b))
 
         return battles
 

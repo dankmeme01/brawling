@@ -2,3 +2,4 @@ dist/
 notes.txt
 .pypirc
 .token
+__pycache__
