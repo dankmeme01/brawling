@@ -40,29 +40,30 @@ class Client:
 
     To paginate over data, use methods starting with page_*. They return iterators that yield response models.
     """
-    def __init__(self, token: Union[str, Path], *, proxy: bool = False, strict_errors: bool = True, force_no_cache: bool = False):
+    def __init__(self, token: Union[str, Path], *, proxy: bool = False, strict_errors: bool = True, force_no_cache: bool = False, force_no_sort: bool = False):
         """Initialize the main client
 
         Args:
             token (str): Your token, as specified on the developer website
             proxy (bool, optional): Whether to use [a 3rd party proxy](https://docs.royaleapi.com/#/proxy). DISCLAIMER: Use at your own risk. I cannot guarantee the safety of this proxy. Defaults to False.
             strict_errors (bool, optional): Whether to raise exceptions if API returned a status code other than 200, or to return them. Will still raise non-API related exceptions. Defaults to True.
+            force_no_cache (bool, optional): Whether to force disable caching or no. Has no impact if requests-cache is not installed. Defaults to False
+            force_no_sort (bool, optional): Whether to disable any sorting and return data in the same order as it was received.
         """
+        logging.basicConfig()
         self.__logger = logging.getLogger("brawling")
         self.__logger.propagate = True
-        self.__ch = logging.StreamHandler()
-        self.__ch.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s: %(message)s"))
-        self.__logger.addHandler(self.__ch)
         self._debug(False)
         self._headers = {"Authorization": f"Bearer {self._parse_token(token)}"}
         self._base = PROXY_URL if proxy else BASE_URL
+        self._sort = not force_no_sort
         self._strict = strict_errors
         self._caching = CACHE_ENABLED and not force_no_cache
 
         if self._caching:
-            self.session = CachedSession(cache_name=".bsapi_cache", use_temp=True, expire_after=timedelta(hours=1), cache_control=True)
+            self._session = CachedSession(cache_name=".bsapi_cache", use_temp=True, expire_after=timedelta(hours=1), cache_control=True)
         else:
-            self.session = Session()
+            self._session = Session()
 
     def _parse_token(self, token: Union[str, Path]) -> str:
         if isinstance(token, Path):
@@ -85,7 +86,7 @@ class Client:
             debug (bool): Whether debug should be enabled or disabled
         """
 
-        self.__ch.setLevel(logging.DEBUG if debug else logging.WARN)
+        self.__logger.setLevel(logging.DEBUG if debug else logging.WARNING)
 
     def _url(self, path: str):
         """Concatenate path to base URL
@@ -114,7 +115,7 @@ class Client:
         else:
             url = self._base + quote_plus(url[len(self._base):], safe='/')
 
-        r = self.session.get(url, headers=self._headers, params=params)
+        r = self._session.get(url, headers=self._headers, params=params)
         self.__logger.info("got url %s, status: %d", url, r.status_code)
         if r.status_code != 200:
             if not r.text:
@@ -179,7 +180,7 @@ class Client:
     # python dunder methods
 
     def __del__(self):
-        self.session.close()
+        self._session.close()
 
     def __repr__(self) -> str:
         return f"<Client(proxy={self._base == PROXY_URL}, strict_errors={self._strict}, cache_enabled={self._caching})>"
@@ -204,6 +205,10 @@ class Client:
 
         for b in battle_list:
             battles.append(SoloBattle.from_json(b) if "players" in b["battle"] else TeamBattle.from_json(b))
+
+        if self._sort:
+            # most recent battles first
+            battles.sort(key=lambda x: x.battle_time, reverse=True)
 
         return battles
 
@@ -231,7 +236,9 @@ class Client:
         if isinstance(res, ErrorResponse):
             return res
 
-        return self._unwrap_list(res["items"], ClubMember)
+        lst = self._unwrap_list(res["items"], ClubMember)
+
+        return lst
 
     def get_club(self, tag: str) -> Club:
         """Get the information about a club by its tag."""
@@ -282,12 +289,16 @@ class Client:
     # brawlers
 
     def get_brawlers(self) -> list[Brawler]:
-        """Get a list of all the brawlers available in game."""
+        """Get a list of all the brawlers available in game.
+
+        `sort_factor` is ignored if sorting was disabled."""
         res = self._get("/brawlers")
         if isinstance(res, ErrorResponse):
             return res
 
-        return self._unwrap_list(res["items"], Brawler)
+        lst = self._unwrap_list(res["items"], Brawler)
+
+        return lst
 
     def get_brawler(self, id: Union[Union[int, str], BrawlerID]) -> Brawler:
         """Get a single brawler by their ID or an enumeration value.
