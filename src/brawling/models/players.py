@@ -1,4 +1,4 @@
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 import dateutil.parser
@@ -77,7 +77,7 @@ class Battle(BaseModel):
     result: str
     duration: Optional[int]
     trophy_change: Optional[int]
-    star_player: BattlePlayer
+    star_player: Optional[BattlePlayer]
 
     @classmethod
     def from_json(cls, obj):
@@ -86,7 +86,7 @@ class Battle(BaseModel):
             dateutil.parser.isoparse(obj["battleTime"]),
             BattleEvent.from_json(obj["event"]),
             battle["mode"],
-            battle.get("type"),
+            battle.get("type", None),
             battle["result"] if "result" in battle else battle["rank"],
             battle.get("duration", None),
             battle.get("trophyChange", None),
@@ -100,7 +100,7 @@ class SoloBattle(Battle):
 
     @classmethod
     def from_json(cls, obj):
-        items = asdict(Battle.from_json(obj))
+        items = Battle.from_json(obj).__dict__
         items.update({
             "players": [BattlePlayer.from_json(x) for x in obj["battle"]["players"]]
         })
@@ -113,7 +113,7 @@ class TeamBattle(Battle):
 
     @classmethod
     def from_json(cls, obj):
-        items = asdict(Battle.from_json(obj))
+        items = Battle.from_json(obj).__dict__
         items.update({
             "teams": [BattleTeam.from_json(x) for x in obj["battle"]["teams"]]
         })
