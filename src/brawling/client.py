@@ -121,7 +121,7 @@ class Client:
                 raise Exception(f"Got an error and no message, code: {r.status_code}")
 
             json = r.json()
-            exc = generate_exception(r.status_code, json["reason"], json["message"])
+            exc = generate_exception(r.status_code, json.get("reason", ''), json.get("message", ''))
 
             self.__logger.info("generated exception: %s", str(exc))
 

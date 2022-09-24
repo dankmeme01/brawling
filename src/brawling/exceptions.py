@@ -17,7 +17,7 @@ __all__ = [
 class APIException(Exception):
     """Base class for all API exceptions"""
     def __init__(self, reason, message):
-        super().__init__(message)
+        super().__init__(message if message else reason)
         self.reason = reason
 
 class ClientError(APIException):
