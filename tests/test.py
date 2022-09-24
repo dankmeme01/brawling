@@ -51,6 +51,11 @@ class Tests(unittest.TestCase):
         self.assertNotIsInstance(brawler, brawling.ErrorResponse, str(brawler))
         self.assertEqual(brawler.id, TEST_BRAWLER_ID.value, "Invalid brawler id")
 
+    def test_brawler_by_name(self):
+        brawler = self.client.get_brawler("COLT")
+        self.assertNotIsInstance(brawler, brawling.ErrorResponse, str(brawler))
+        self.assertEqual(brawler.id, brawling.BrawlerID.COLT.value, "Invalid brawler id")
+
     def test_bad_brawler(self):
         brawler = self.client.get_brawler(0xdeadbeef)
         self.assertIsInstance(brawler, brawling.ErrorResponse, str(brawler))
