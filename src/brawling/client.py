@@ -6,6 +6,7 @@ from difflib import SequenceMatcher
 from requests import Session
 
 import logging
+import time
 import re
 
 try:
@@ -19,6 +20,7 @@ except ModuleNotFoundError:
 from .models import *
 from .exceptions import *
 from .util import *
+from .__version__ import __version__
 
 __all__ = [
     "Client",
@@ -27,6 +29,7 @@ __all__ = [
 
 BASE_URL = "https://api.brawlstars.com/v1"
 PROXY_URL = "https://bsproxy.royaleapi.dev/v1"
+USER_AGENT = f"brawling/{__version__}"
 
 @dataclass
 class ErrorResponse:
@@ -54,7 +57,7 @@ class Client:
         self.__logger = logging.getLogger("brawling")
         self.__logger.propagate = True
         self._debug(False)
-        self._headers = {"Authorization": f"Bearer {self._parse_token(token)}"}
+        self._headers = {"Authorization": f"Bearer {self._parse_token(token)}", "User-Agent": USER_AGENT}
         self._base = PROXY_URL if proxy else BASE_URL
         self._sort = not force_no_sort
         self._strict = strict_errors
@@ -116,6 +119,11 @@ class Client:
             url = self._base + quote_plus(url[len(self._base):], safe='/')
 
         r = self._session.get(url, headers=self._headers, params=params)
+        while r.status_code == 429: # throttled
+            self.__logger.warning("we got throttled, waiting 10 seconds and repeating")
+            time.sleep(10)
+            r = self._session.get(url, headers=self._headers, params=params)
+
         self.__logger.info("got url %s, status: %d", url, r.status_code)
         if r.status_code != 200:
             if not r.text:
