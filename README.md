@@ -1,17 +1,33 @@
 # Brawling
 
-Synchronous API wrapper for Brawl Stars made by Supercell
+Sync + async wrapper for the Brawl Stars API
 
 ## Installation
+
+To install normally (only sync)
 
 ```
 pip install brawling
 ```
 
-To install with caching support (for performance, optional)
+There are three additional extras you can install: async, cache, acache
+
+To install with caching support (only sync, installs requests-cache)
 
 ```
 pip install brawling[cache]
+```
+
+To install with async support (will install aiohttp)
+
+```
+pip install brawling[async]
+```
+
+To install with async caching support (will also install aiohttp, aiohttp-client-cache and aiosqlite)
+
+```
+pip install brawling[acache]
 ```
 
 ## Usage
@@ -26,12 +42,31 @@ import brawling
 TOKEN = "..."
 
 # Initialize the client
-client = brawling.Client(TOKEN)
 
+client = brawling.Client(TOKEN)
 battle_log = client.get_battle_log("#yourtag")
+client.close()
+
+# or, in an async function
+
+client = brawling.AsyncClient(TOKEN)
+battle_log = await client.get_battle_log("#yourtag")
+await client.aclose() # note the 'aclose'
 
 # Prints "Battle(battle_time=...)"
 print(battle_log[0])
+```
+
+Since 1.1 there are also context managers, to automatically release resources:
+
+```py
+with brawling.Client(TOKEN) as client:
+    player = client.get_player("#...")
+
+# or, in an async function
+
+async with brawling.AsyncClient(TOKEN) as client:
+    player = await client.get_player("#...")
 ```
 
 For some endpoints, there's also a possibility to page over them:

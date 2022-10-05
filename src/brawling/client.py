@@ -53,20 +53,24 @@ class Client:
             force_no_cache (bool, optional): Whether to force disable caching or no. Has no impact if requests-cache is not installed. Defaults to False
             force_no_sort (bool, optional): Whether to disable any sorting and return data in the same order as it was received.
         """
-        logging.basicConfig()
-        self.__logger = logging.getLogger("brawling")
-        self.__logger.propagate = True
-        self._debug(False)
-        self._headers = {"Authorization": f"Bearer {self._parse_token(token)}", "User-Agent": USER_AGENT}
-        self._base = PROXY_URL if proxy else BASE_URL
-        self._sort = not force_no_sort
-        self._strict = strict_errors
-        self._caching = CACHE_ENABLED and not force_no_cache
+        self._setups(token, proxy, strict_errors, force_no_cache, force_no_sort)
 
         if self._caching:
             self._session = CachedSession(cache_name=".bsapi_cache", use_temp=True, expire_after=timedelta(hours=1), cache_control=True)
         else:
             self._session = Session()
+
+    def _setups(self, token, proxy, strict_errors, force_no_cache, force_no_sort, *, cache_const = CACHE_ENABLED):
+        logging.basicConfig()
+        self._logger = logging.getLogger("brawling")
+        self._logger.propagate = True
+        self._debug(False)
+        self._headers = {"Authorization": f"Bearer {self._parse_token(token)}", "User-Agent": USER_AGENT}
+        self._base = PROXY_URL if proxy else BASE_URL
+        self._sort = not force_no_sort
+        self._strict = strict_errors
+        self._caching = cache_const and not force_no_cache
+        self._open = True
 
     def _parse_token(self, token: Union[str, Path]) -> str:
         if isinstance(token, Path):
@@ -89,7 +93,7 @@ class Client:
             debug (bool): Whether debug should be enabled or disabled
         """
 
-        self.__logger.setLevel(logging.DEBUG if debug else logging.WARNING)
+        self._logger.setLevel(logging.DEBUG if debug else logging.WARNING)
 
     def _url(self, path: str):
         """Concatenate path to base URL
@@ -113,6 +117,9 @@ class Client:
         Returns:
             Any or ErrorResponse: Either a JSON object (list/dict) or an ErrorResponse if an error has happened and strict mode is disabled.
         """
+        if not self._open:
+            raise RuntimeError("Client has already been closed")
+
         if not url.startswith(self._base):
             url = self._base + quote_plus(url, safe='/')
         else:
@@ -120,11 +127,11 @@ class Client:
 
         r = self._session.get(url, headers=self._headers, params=params)
         while r.status_code == 429: # throttled
-            self.__logger.warning("we got throttled, waiting 10 seconds and repeating")
+            self._logger.warning("we got throttled, waiting 10 seconds and repeating")
             time.sleep(10)
             r = self._session.get(url, headers=self._headers, params=params)
 
-        self.__logger.info("got url %s, status: %d", url, r.status_code)
+        self._logger.info("got url %s, status: %d", url, r.status_code)
         if r.status_code != 200:
             if not r.text:
                 raise Exception(f"Got an error and no message, code: {r.status_code}")
@@ -132,7 +139,7 @@ class Client:
             json = r.json()
             exc = generate_exception(r.status_code, json.get("reason", ''), json.get("message", ''))
 
-            self.__logger.info("generated exception: %s", str(exc))
+            self._logger.info("generated exception: %s", str(exc))
 
             return self._exc_wrapper(exc)
 
@@ -188,12 +195,23 @@ class Client:
     # python dunder methods
 
     def __del__(self):
-        self._session.close()
+        self.close()
 
     def __repr__(self) -> str:
         return f"<Client(proxy={self._base == PROXY_URL}, strict_errors={self._strict}, cache_enabled={self._caching})>"
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.close()
+
     # --- public API methods --- #
+
+    def close(self):
+        if self._open:
+            self._session.close()
+            self._open = False
 
     # players
 

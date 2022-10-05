@@ -19,7 +19,6 @@ class Tests(unittest.TestCase):
         global global_client
         super().__init__(*a, **kw)
         self.client = global_client
-        self.maxDiff = 5000
 
     def test_battle_log(self):
         log = self.client.get_battle_log(TAG)
@@ -183,7 +182,6 @@ class Tests(unittest.TestCase):
         iterator_tags.sort()
 
         self.assertListEqual(tags, iterator_tags)
-
 
 if __name__ == '__main__':
     unittest.main()

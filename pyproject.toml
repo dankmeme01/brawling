@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "brawling"
-version = "1.0.1"
+version = "1.1.0"
 description = "Brawl stars API wrapper (synchronous)"
 authors = ["dankmeme01 <kirill.babikov28@gmail.com>"]
 license = "MIT"
@@ -11,9 +11,14 @@ python = "^3.7"
 python-dateutil = "^2.8.2"
 requests = "^2.28.1"
 requests-cache = { version = "^0.9.6", optional = true }
+aiohttp = { version = "^3.8.3", optional = true }
+aiohttp-client-cache = { version = "^0.7.3", optional = true }
+aiosqlite = { version = "^0.17.0", optional = true }
 
 [tool.poetry.extras]
 cache = ["requests-cache"]
+async = ["aiohttp"]
+acache = ["aiohttp", "aiohttp-client-cache", "aiosqlite"]
 
 [build-system]
 requires = ["poetry-core"]

@@ -3,6 +3,7 @@ from enum import Enum
 __all__ = [
     "catching",
     "RequestPaginator",
+    "AsyncRequestPaginator",
     "BrawlerID"
 ]
 
@@ -64,6 +65,49 @@ class RequestPaginator:
 
             if marker is None:
                 break
+
+class AsyncRequestPaginator(RequestPaginator):
+    def __init__(self, client, url: str, per_page: int, max: int, cls_factory):
+        super().__init__(client, url, per_page, max, cls_factory)
+
+    def __aiter__(self):
+        self.marker = None
+        self.reqstop = False
+        return self
+
+    async def __anext__(self):
+        if self.reqstop or (self.max != 0 and self.done >= self.max):
+            raise StopAsyncIteration
+
+        params = {
+            "limit": self.limit
+        }
+
+        if self.marker:
+            params["after"] = self.marker
+
+        page = await self.client._get(self.url, params)
+
+        # im lazy
+        if type(page).__name__.endswith('ErrorResponse'):
+            self.reqstop = True
+            return page
+
+        items = self.client._unwrap_list(page["items"], self.cls)
+        if len(items) == 0:
+            raise StopAsyncIteration
+
+        self.done += len(items)
+        if self.max != 0 and self.done > self.max:
+            diff = self.done - self.max
+            items = items[:-diff]
+
+        self.marker = page["paging"]["cursors"].get("after", None)
+        if self.marker is None:
+            self.reqstop = True
+
+        return items
+
 
 # Might not be always up to date
 class BrawlerID(Enum):
