@@ -56,6 +56,10 @@ else:
             self._open = False
             await self._session.close()
 
+        def __del__(self):
+            if self._open:
+                self._logger.error("Client destructed before calling aclose()")
+
         def __repr__(self) -> str:
             return super().__repr__().replace("Client", "AsyncClient")
 

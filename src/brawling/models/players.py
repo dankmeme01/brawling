@@ -73,8 +73,8 @@ class Battle(BaseModel):
     battle_time: datetime
     event: BattleEvent
     mode: str
-    type: str
-    result: str
+    type: Optional[str]
+    result: Optional[str] # optional for weekend gamemodes
     duration: Optional[int]
     trophy_change: Optional[int]
     star_player: Optional[BattlePlayer]
@@ -87,7 +87,7 @@ class Battle(BaseModel):
             BattleEvent.from_json(obj["event"]),
             battle["mode"],
             battle.get("type", None),
-            battle["result"] if "result" in battle else battle["rank"],
+            battle["result"] if "result" in battle else (battle["rank"] if "rank" in battle else None),
             battle.get("duration", None),
             battle.get("trophyChange", None),
             BattlePlayer.from_json(battle["starPlayer"]) if (battle.get('starPlayer', None) is not None) else None,

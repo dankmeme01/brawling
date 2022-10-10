@@ -183,7 +183,6 @@ async def test_page_brawler_rankings(client):
     iterator_tags.sort()
 
     for x,y in zip(tags, iterator_tags):
-        print(x, y)
         assert x == y
 
 async def main():
@@ -201,11 +200,11 @@ async def main():
         await test_club_ranking(client)
         await test_brawler_ranking(client)
         await test_player_ranking(client)
-        # await test_page_club_members(client)
-        # await test_page_club_rankings(client)
-        # await test_page_player_rankings(client)
-        # await test_page_brawlers(client)
-        # await test_page_brawler_rankings(client)
+        await test_page_club_members(client)
+        await test_page_club_rankings(client)
+        await test_page_player_rankings(client)
+        await test_page_brawlers(client)
+        await test_page_brawler_rankings(client)
         print(f"All tests passed in {time.time() - now}")
 
 asyncio.get_event_loop().run_until_complete(main())
