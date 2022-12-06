@@ -172,3 +172,4 @@ class BrawlerID(Enum):
     OTIS = 16000059
     SAM = 16000060
     GUS = 16000061
+    BUSTER = 16000062
