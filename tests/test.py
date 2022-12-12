@@ -65,6 +65,7 @@ class Tests(unittest.TestCase):
         events = rotation.events
         now = datetime.now(timezone.utc)
 
+        # this condition has a chance to fail if ran few minutes after an event was changed
         self.assertGreater(change, now, "Change had already happened?")
         self.assertGreater(len(events), 0, "No events available")
 
@@ -141,10 +142,7 @@ class Tests(unittest.TestCase):
         self.assertListEqual(tags, iterator_tags)
 
     def test_page_player_rankings(self):
-        # TODO : I don't know if it's a problem with API or not, but this test keeps failing.
-        # Despite being exactly the same as other tests, this one fails to work with 'global' region.
-        # It's highly likely that it's a coincidence and could fix itself by later,
-        # or other tests could break as well. This does not reproduce if you use a region like 'pl' (at least now)
+        # This test is random and inconsistent because of the bugginess in the API
 
         tags = [x.tag for x in self.client.get_player_rankings('global')]
 

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "brawling"
-version = "1.1.2"
+version = "1.1.3"
 description = "Brawl stars API wrapper (synchronous)"
 authors = ["dankmeme01 <kirill.babikov28@gmail.com>"]
 license = "MIT"
